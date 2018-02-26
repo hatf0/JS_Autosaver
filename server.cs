@@ -1,0 +1,1 @@
+js_eval("import('Script_BLJS_Saves').then((mod) => {Autosaver = mod;});");
