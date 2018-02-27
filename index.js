@@ -18,7 +18,7 @@ var BLSave = class BLSave
     savegroupindex = 0;
     savebrickindex = 0;
     
-    constructor(filePath='saves/AutosaverJS/save.bls', chunksize=500, ticksMS=33, bl_idOnly = -1, debug=true)
+    constructor(filePath='saves/AutosaverJS/save.bls', chunksize=500, ticksMS=1, bl_idOnly = -1, debug=true)
     {
         if(filePath.indexOf(".bls") === -1)
         {
@@ -36,13 +36,13 @@ var BLSave = class BLSave
             console.log("  Debug enabled");
         
         this.BricksPerChunk = chunksize;
-        this.startTime = uv.misc.hrtime();
         this.TimePerTick = ticksMS;
         this.FullPath = filePath;
         this.SaveFolder = this.FullPath.substr(0, this.FullPath.lastIndexOf("/") + 1);
         this.SaveName = this.FullPath.substr(this.FullPath.lastIndexOf("/") + 1);
         this.bl_idOnly = bl_idOnly;
         this.__debug = debug;
+        this.getPrintTexture = ts.func('getPrintTexture');
         this.__timer.parent = this;
         this.isLanServer = false;
         this.doOwnership = false;
@@ -105,13 +105,23 @@ var BLSave = class BLSave
                 if(brick.isPlanted == 0)
                     continue;
 
+                data = ts.obj(brick.datablock);  
+                let printID = brick.printID;
+                let uiname = data.uiName;
+                let pos = brick.position;
+                let angleID = brick.angleID;
+                let isBasePlate = brick.isBasePlate;
+                let colorID = brick.colorID;
+                let colorFxID = brick.colorFxID;
+                let shapeFxID = brick.shapeFxID;
                 //print('Getting datablock..');
-                data = ts.obj(brick.datablock);
                 
                 //print('Checking if it has a print..');
                 if(data.hasPrint == 1)
                 {
-                    texture = ts.func('getPrintTexture')(brick.printID);
+                  print('has print..');
+                    //texture = ts.func('getPrintTexture')(brick.printID);
+                    texture = actualThis.getPrintTexture(printID);
                     path = filePath(texture);
                     underscorePos = path.indexOf("_");
                     name = path.substr(underscorePos + 1, path.indexOf("_", 14) - 14) + "/" + fileBase(texture);
@@ -122,8 +132,8 @@ var BLSave = class BLSave
                     printbrick = '';
 
                 //print('Constructing massive string..');
-                str = data.uiName + '" ' + brick.position + ' ' + brick.angleID + ' ' + brick.isBasePlate + ' ' + brick.colorID
-                        + ' ' + printbrick + ' ' + brick.colorFxID + ' ' + brick.shapeFxID + ' ' + Number(1) + ' ' + Number(1) + ' ' + Number(1);
+                str = uiname + '" ' + pos + ' ' + angleID + ' ' + isBasePlate + ' ' + colorID
+                        + ' ' + printbrick + ' ' + colorFxID + ' ' + shapeFxID + ' ' + Number(1) + ' ' + Number(1) + ' ' + Number(1);
                 uv.fs.write(actualThis.__descriptor, ToUint8(str + '\n'), 0);
                 //print('Wrote out the massive string..');
                 if(actualThis.doOwnership && actualThis.isLanServer)
@@ -250,6 +260,7 @@ var BLSave = class BLSave
     start()
     {
         console.log("BLSave - Saver started!");
+                this.startTime = uv.misc.hrtime();
         
         try
         {
@@ -320,8 +331,9 @@ var BLSave = class BLSave
         //uv.fs.fchmod(this.__descriptor, 777); //give it full perms everywhere...
         uv.fs.write(this.__descriptor, ToUint8('This is a Blockland autosave file.  You probably shouldn\'t modify it cause you\'ll mess it up.\n1\n'), 0);
         uv.fs.write(this.__descriptor, ToUint8('Description usually goes here, written in javascript anyway\n'), 0);
+        let colorIDTable = ts.func('getColorIDTable');
         for(let i = 0; i < 64; i++)
-            uv.fs.write(this.__descriptor, ToUint8(ts.func('getColorIDTable')(i) + '\n'), 0);
+            uv.fs.write(this.__descriptor, ToUint8(colorIDTable(i) + '\n'), 0);
         uv.fs.write(this.__descriptor, ToUint8('Linecount ' + this.TotalBricks + '\n'), 0);
         //this.__timer.start(5, 0, this.onTick, [0]);
         this.onTick.apply(this.__timer, [0]);
